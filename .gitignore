@@ -1,0 +1,19 @@
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test documents (contains personal thesis data)
+*.docx
+
+# npm
+node_modules/
+
+# IDE
+.vscode/
+.idea/
