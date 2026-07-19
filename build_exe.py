@@ -29,6 +29,8 @@ def build_exe():
         "--hidden-import", "core.fixer",
         "--hidden-import", "gui",
         "--hidden-import", "gui.main_gui",
+        "--hidden-import", "gui.template_dialog",
+        "--hidden-import", "gui.i18n",
         "--hidden-import", "yaml",
         "--hidden-import", "lxml",
         "--hidden-import", "docx",
