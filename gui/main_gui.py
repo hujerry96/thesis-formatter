@@ -184,10 +184,6 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self._refresh_template_list()
         self.template_combo.bind("<<ComboboxSelected>>", self._on_template_change)
 
-        self._template_info_label = tk.Label(card, text="", bg=PANEL, fg=TEXT_SEC,
-            font=("Microsoft JhengHei", 8), anchor="w", wraplength=220)
-        self._template_info_label.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 0))
-
         self._manage_btn = ttk.Button(card, text=t("manage_templates"), style="Ghost.TButton",
                     command=self._open_template_manager)
         self._manage_btn.grid(row=4, column=0, sticky="ew", padx=16, pady=(10, 16))
@@ -367,19 +363,12 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
     def _on_template_change(self, event=None):
         display = self.template_var.get()
         if not display:
-            self._template_info_label.config(text="")
             return
         template_key = self._template_map.get(display, "")
         try:
-            info = TemplateManager.get_template_info(template_key)
-            desc = info.get('description', '')
-            src = t('builtin') if info.get('builtin') else t('custom')
-            text = f"\u2713 {info['name']} ({src})"
-            if desc:
-                text += f" \u2014 {desc}"
-            self._template_info_label.config(text=text, fg=OK_GRN)
+            TemplateManager.get_template_info(template_key)
         except Exception:
-            self._template_info_label.config(text=f"{display}", fg=TEXT_SEC)
+            pass
 
     def _open_template_manager(self):
         from gui.template_dialog import TemplateManagerDialog
