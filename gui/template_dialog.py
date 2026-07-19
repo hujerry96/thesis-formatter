@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 
 from core.template_manager import TemplateManager, TemplateExistsError, TemplateNotFoundError, BuiltinTemplateError
+from gui.i18n import t
 
 BG        = "#F3F4F6"
 CARD_BG   = "#FFFFFF"
@@ -42,7 +43,7 @@ class TemplateEditorDialog(tk.Toplevel):
         self.template_data = copy.deepcopy(template_data)
         self.is_new = is_new
         self.result = None
-        self.title("新增模板" if is_new else "編輯模板")
+        self.title(t("te_title_new") if is_new else t("te_title_edit"))
         self.geometry("680x720")
         self.configure(bg=BG)
         self.resizable(True, True)
@@ -54,7 +55,7 @@ class TemplateEditorDialog(tk.Toplevel):
         except Exception as e:
             import traceback as _tb
             _tb.print_exc()
-            messagebox.showerror("錯誤", f"無法載入編輯器:\n{e}", parent=self)
+            messagebox.showerror(t("tm_err_title"), t("te_err_load", e), parent=self)
             self.destroy()
             return
         self.grab_set()
@@ -102,10 +103,10 @@ class TemplateEditorDialog(tk.Toplevel):
         top = tk.Frame(self, bg=BG)
         top.pack(fill="x", padx=12, pady=(8, 4))
         top.columnconfigure(1, weight=1)
-        tk.Label(top, text="模板名稱", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=0, column=0, sticky="w")
+        tk.Label(top, text=t("te_label_name"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=0, column=0, sticky="w")
         self.entry_name = tk.Entry(top, font=("Microsoft JhengHei UI", 10), bd=1, relief="solid")
         self.entry_name.grid(row=0, column=1, sticky="ew", padx=(8, 0), ipady=3, pady=(0, 4))
-        tk.Label(top, text="描述", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
+        tk.Label(top, text=t("te_label_desc"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
         self.entry_desc = tk.Entry(top, font=("Microsoft JhengHei UI", 10), bd=1, relief="solid")
         self.entry_desc.grid(row=1, column=1, sticky="ew", padx=(8, 0), ipady=3)
 
@@ -114,56 +115,56 @@ class TemplateEditorDialog(tk.Toplevel):
 
         # ── Tab 1: 紙張與頁面 ──
         tab1 = ScrollableTabFrame(notebook)
-        notebook.add(tab1, text=" 紙張與頁面 ")
+        notebook.add(tab1, text=t("te_tab_paper"))
         f1 = tab1.inner
         f1.columnconfigure(1, weight=1)
 
-        c_paper = self._card(f1, "紙張", 0)
-        self.paper_size = self._combo(c_paper, "尺寸", 0, ["A4", "A3", "Letter", "B5"])
-        self.paper_orient = self._combo(c_paper, "方向", 1, ["portrait", "landscape"])
+        c_paper = self._card(f1, t("te_paper"), 0)
+        self.paper_size = self._combo(c_paper, t("te_size"), 0, ["A4", "A3", "Letter", "B5"])
+        self.paper_orient = self._combo(c_paper, t("te_orient"), 1, ["portrait", "landscape"])
 
-        c_body = self._card(f1, "內文邊距 (cm)", 1)
-        self.page_top = self._field(c_body, "上", 0)
-        self.page_bottom = self._field(c_body, "下", 1)
-        self.page_left = self._field(c_body, "左", 2)
-        self.page_right = self._field(c_body, "右", 3)
+        c_body = self._card(f1, t("te_margin_body"), 1)
+        self.page_top = self._field(c_body, t("te_top"), 0)
+        self.page_bottom = self._field(c_body, t("te_bottom"), 1)
+        self.page_left = self._field(c_body, t("te_left"), 2)
+        self.page_right = self._field(c_body, t("te_right"), 3)
 
-        c_cover = self._card(f1, "封面邊距 (cm)", 2)
-        self.cover_top = self._field(c_cover, "上", 0)
-        self.cover_bottom = self._field(c_cover, "下", 1)
-        self.cover_left = self._field(c_cover, "左", 2)
-        self.cover_right = self._field(c_cover, "右", 3)
+        c_cover = self._card(f1, t("te_margin_cover"), 2)
+        self.cover_top = self._field(c_cover, t("te_top"), 0)
+        self.cover_bottom = self._field(c_cover, t("te_bottom"), 1)
+        self.cover_left = self._field(c_cover, t("te_left"), 2)
+        self.cover_right = self._field(c_cover, t("te_right"), 3)
 
-        c_bind = self._card(f1, "裝訂", 3)
-        self.bind_extra = self._field(c_bind, "額外左邊距 (cm)", 0)
+        c_bind = self._card(f1, t("te_bind"), 3)
+        self.bind_extra = self._field(c_bind, t("te_bind_extra"), 0)
 
         # ── Tab 2: 行距與段落 ──
         tab3 = ScrollableTabFrame(notebook)
-        notebook.add(tab3, text=" 行距與段落 ")
+        notebook.add(tab3, text=t("te_tab_spacing"))
         f3 = tab3.inner
         f3.columnconfigure(1, weight=1)
 
-        c_ls = self._card(f3, "行距", 0)
-        self.ls_type = self._combo(c_ls, "類型", 0, ["multiple", "exact", "at_least"])
-        self.ls_value = self._field(c_ls, "數值", 1)
+        c_ls = self._card(f3, t("te_ls"), 0)
+        self.ls_type = self._combo(c_ls, t("te_ls_type"), 0, ["multiple", "exact", "at_least"])
+        self.ls_value = self._field(c_ls, t("te_ls_value"), 1)
 
-        c_ps = self._card(f3, "段落間距 (pt)", 1)
-        self.ps_before = self._field(c_ps, "段前", 0)
-        self.ps_after = self._field(c_ps, "段後", 1)
+        c_ps = self._card(f3, t("te_ps"), 1)
+        self.ps_before = self._field(c_ps, t("te_ps_before"), 0)
+        self.ps_after = self._field(c_ps, t("te_ps_after"), 1)
 
-        c_indent = self._card(f3, "首行縮排", 2)
-        self.indent_enabled = self._check(c_indent, "啟用", 0)
-        self.indent_cm = self._field(c_indent, "數值 (cm)", 1)
-        self.indent_chars = self._field(c_indent, "字元數", 2)
+        c_indent = self._card(f3, t("te_indent"), 2)
+        self.indent_enabled = self._check(c_indent, t("te_indent_enabled"), 0)
+        self.indent_cm = self._field(c_indent, t("te_indent_cm"), 1)
+        self.indent_chars = self._field(c_indent, t("te_indent_chars"), 2)
 
         # ── Tab 4: 標題樣式（使用表格佈局）──
         tab4 = ScrollableTabFrame(notebook)
-        notebook.add(tab4, text=" 標題樣式 ")
+        notebook.add(tab4, text=t("te_tab_headings"))
         f4 = tab4.inner
         f4.columnconfigure(0, weight=1)
 
-        heading_labels = [("摘要/致謝/目錄", "title"), ("標題 1", "heading1"),
-                          ("標題 2", "heading2"), ("標題 3", "heading3"), ("標題 4", "heading4")]
+        heading_labels = [(t("te_h_title"), "title"), (t("te_h1"), "heading1"),
+                          (t("te_h2"), "heading2"), (t("te_h3"), "heading3"), (t("te_h4"), "heading4")]
 
         self.align_map_display = {'center': '置中', 'left': '靠左', 'right': '靠右', 'justify': '左右對齊'}
 
@@ -178,11 +179,11 @@ class TemplateEditorDialog(tk.Toplevel):
             frow.grid(row=row, column=0, columnspan=2, sticky="ew", pady=1)
             frow.columnconfigure(1, weight=1)
             frow.columnconfigure(3, weight=1)
-            tk.Label(frow, text="中文字體", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=0)
+            tk.Label(frow, text=t("te_zh_font"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=0)
             w = ttk.Combobox(frow, values=self._fonts, state="readonly", width=16)
             w.grid(row=0, column=1, sticky="ew", padx=(0, 8))
             entries['zh_font'] = w
-            tk.Label(frow, text="英文字體", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=2)
+            tk.Label(frow, text=t("te_en_font"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=2)
             ew = ttk.Combobox(frow, values=self._fonts, state="readonly", width=16)
             ew.grid(row=0, column=3, sticky="ew")
             entries['en_font'] = ew
@@ -193,15 +194,15 @@ class TemplateEditorDialog(tk.Toplevel):
             arow.columnconfigure(1, weight=1)
             arow.columnconfigure(3, weight=1)
             arow.columnconfigure(5, weight=1)
-            tk.Label(arow, text="大小", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=0)
+            tk.Label(arow, text=t("te_font_size"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=0)
             e = tk.Entry(arow, font=("Consolas", 9), bd=1, relief="solid", width=6)
             e.grid(row=0, column=1, sticky="ew", padx=(0, 8), ipady=2)
             entries['font_size'] = e
-            tk.Label(arow, text="粗體", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=2)
+            tk.Label(arow, text=t("te_bold"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=2)
             bv = ttk.Combobox(arow, values=["是", "否"], state="readonly", width=5)
             bv.grid(row=0, column=3, sticky="ew", padx=(0, 8))
             entries['bold'] = bv
-            tk.Label(arow, text="對齊", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=4)
+            tk.Label(arow, text=t("te_align"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), width=4, anchor="w").grid(row=0, column=4)
             av = ttk.Combobox(arow, values=["center", "left", "right", "justify"], state="readonly", width=10)
             av.grid(row=0, column=5, sticky="ew")
             entries['align'] = av
@@ -211,57 +212,57 @@ class TemplateEditorDialog(tk.Toplevel):
             brow.grid(row=row+2, column=0, columnspan=2, sticky="ew", pady=1)
             brow.columnconfigure(1, weight=1)
             brow.columnconfigure(3, weight=1)
-            tk.Label(brow, text="段前 (pt)", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=0)
+            tk.Label(brow, text=t("te_before"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=0)
             e1 = tk.Entry(brow, font=("Consolas", 9), bd=1, relief="solid", width=6)
             e1.grid(row=0, column=1, sticky="w", padx=(0, 16), ipady=2)
             entries['before'] = e1
-            tk.Label(brow, text="段後 (pt)", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=2)
+            tk.Label(brow, text=t("te_after"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 8), anchor="w").grid(row=0, column=2)
             e2 = tk.Entry(brow, font=("Consolas", 9), bd=1, relief="solid", width=6)
             e2.grid(row=0, column=3, sticky="w", ipady=2)
             entries['after'] = e2
 
             # 第四行：段前分頁
-            entries['page_break'] = self._check(c_h, "段前分頁", row+3)
+            entries['page_break'] = self._check(c_h, t("te_page_break"), row+3)
 
             self.heading_entries[key] = entries
 
         # ── Tab 5: 內文·頁碼·圖表 ──
         tab5 = ScrollableTabFrame(notebook)
-        notebook.add(tab5, text=" 內文·頁碼·圖表 ")
+        notebook.add(tab5, text=t("te_tab_misc"))
         f5 = tab5.inner
         f5.columnconfigure(1, weight=1)
 
-        c_body = self._card(f5, "內文樣式", 0)
-        self.body_zh = self._combo(c_body, "中文字體", 0, self._fonts)
-        self.body_en = self._combo(c_body, "英文字體", 1, self._fonts)
-        self.body_size = self._field(c_body, "大小", 2)
-        self.body_align = self._combo(c_body, "對齊", 3, ["left", "center", "right", "justify"])
+        c_body = self._card(f5, t("te_body"), 0)
+        self.body_zh = self._combo(c_body, t("te_zh_font"), 0, self._fonts)
+        self.body_en = self._combo(c_body, t("te_en_font"), 1, self._fonts)
+        self.body_size = self._field(c_body, t("te_font_size"), 2)
+        self.body_align = self._combo(c_body, t("te_align"), 3, ["left", "center", "right", "justify"])
 
-        c_fm = self._card(f5, "前置頁頁碼", 1)
-        self.fm_style = self._combo(c_fm, "格式", 0, ["roman_lower", "roman_upper", "arabic", "none"])
-        self.fm_pos = self._combo(c_fm, "位置", 1, ["bottom", "top"])
-        self.fm_align = self._combo(c_fm, "對齊", 2, ["center", "left", "right"])
+        c_fm = self._card(f5, t("te_fm"), 1)
+        self.fm_style = self._combo(c_fm, t("te_fm_style"), 0, ["roman_lower", "roman_upper", "arabic", "none"])
+        self.fm_pos = self._combo(c_fm, t("te_fm_pos"), 1, ["bottom", "top"])
+        self.fm_align = self._combo(c_fm, t("te_align"), 2, ["center", "left", "right"])
 
-        c_bm = self._card(f5, "正文頁碼", 2)
-        self.bm_style = self._combo(c_bm, "格式", 0, ["arabic", "roman_lower", "roman_upper", "none"])
-        self.bm_pos = self._combo(c_bm, "位置", 1, ["bottom", "top"])
-        self.bm_align = self._combo(c_bm, "對齊", 2, ["center", "left", "right"])
-        self.bm_start = self._field(c_bm, "起始頁碼", 3)
+        c_bm = self._card(f5, t("te_bm"), 2)
+        self.bm_style = self._combo(c_bm, t("te_fm_style"), 0, ["arabic", "roman_lower", "roman_upper", "none"])
+        self.bm_pos = self._combo(c_bm, t("te_fm_pos"), 1, ["bottom", "top"])
+        self.bm_align = self._combo(c_bm, t("te_align"), 2, ["center", "left", "right"])
+        self.bm_start = self._field(c_bm, t("te_bm_start"), 3)
 
-        c_fig = self._card(f5, "圖片格式", 3)
-        self.fig_num = self._combo(c_fig, "編號格式", 0, ["dot", "dash", "underscore"])
-        self.fig_caption = self._check(c_fig, "標題在下方", 1)
+        c_fig = self._card(f5, t("te_fig"), 3)
+        self.fig_num = self._combo(c_fig, t("te_fig_num"), 0, ["dot", "dash", "underscore"])
+        self.fig_caption = self._check(c_fig, t("te_fig_caption"), 1)
 
-        c_tab = self._card(f5, "表格格式", 4)
-        self.tab_num = self._combo(c_tab, "編號格式", 0, ["dot", "dash", "underscore"])
-        self.tab_caption = self._check(c_tab, "標題在上方", 1)
+        c_tab = self._card(f5, t("te_tab"), 4)
+        self.tab_num = self._combo(c_tab, t("te_fig_num"), 0, ["dot", "dash", "underscore"])
+        self.tab_caption = self._check(c_tab, t("te_tab_caption"), 1)
 
         # ── 按鈕 ──
         btn = tk.Frame(self, bg=BG)
         btn.pack(fill="x", padx=8, pady=(0, 8))
-        tk.Button(btn, text="取消", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn, text=t("tm_cancel"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
                   bd=1, relief="solid", padx=20, pady=4, command=self.destroy).pack(side="right", padx=(8, 0))
-        tk.Button(btn, text="儲存", bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
+        tk.Button(btn, text=t("te_save"), bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
                   bd=0, padx=20, pady=4, command=self._save).pack(side="right")
 
     def _load_data(self):
@@ -383,7 +384,7 @@ class TemplateEditorDialog(tk.Toplevel):
     def _save(self):
         name = self.entry_name.get().strip() if self.entry_name else ''
         if not name:
-            messagebox.showerror("驗證錯誤", "模板名稱不能為空白", parent=self)
+            messagebox.showerror(t("te_err_name"), t("te_err_name_msg"), parent=self)
             return
 
         desc = self.entry_desc.get().strip() if self.entry_desc else ''
@@ -486,7 +487,7 @@ class TemplateEditorDialog(tk.Toplevel):
 class TemplateManagerDialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("模板管理")
+        self.title(t("tm_title"))
         self.geometry("700x500")
         self.minsize(600, 400)
         self.configure(bg=BG)
@@ -507,9 +508,9 @@ class TemplateManagerDialog(tk.Toplevel):
 
         columns = ("name", "key", "source")
         self.tree = ttk.Treeview(outer, columns=columns, show="headings", selectmode="browse")
-        self.tree.heading("name", text="模板名稱", anchor="w")
-        self.tree.heading("key", text="識別碼", anchor="w")
-        self.tree.heading("source", text="來源", anchor="center")
+        self.tree.heading("name", text=t("te_label_name"), anchor="w")
+        self.tree.heading("key", text=t("tm_heading_key"), anchor="w")
+        self.tree.heading("source", text=t("tm_heading_source"), anchor="center")
         self.tree.column("name", width=250, minwidth=150)
         self.tree.column("key", width=120, minwidth=80)
         self.tree.column("source", width=80, minwidth=60, anchor="center")
@@ -525,22 +526,22 @@ class TemplateManagerDialog(tk.Toplevel):
         btn_frame = tk.Frame(outer, bg=BG)
         btn_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(12, 0))
 
-        tk.Button(btn_frame, text="新增", bg="#059669", fg="white", font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_frame, text=t("tm_add"), bg="#059669", fg="white", font=("Microsoft JhengHei UI", 10),
                   bd=0, padx=16, pady=4, command=self._add_new).pack(side="left", padx=(0, 6))
-        self.btn_edit = tk.Button(btn_frame, text="編輯", bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10),
+        self.btn_edit = tk.Button(btn_frame, text=t("tm_edit"), bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10),
                                   bd=0, padx=16, pady=4, command=self._edit_selected)
         self.btn_edit.pack(side="left", padx=(0, 6))
-        self.btn_del = tk.Button(btn_frame, text="刪除", bg="#DC2626", fg="white", font=("Microsoft JhengHei UI", 10),
+        self.btn_del = tk.Button(btn_frame, text=t("tm_delete"), bg="#DC2626", fg="white", font=("Microsoft JhengHei UI", 10),
                                  bd=0, padx=16, pady=4, command=self._delete_selected)
         self.btn_del.pack(side="left", padx=(0, 6))
-        tk.Button(btn_frame, text="匯入", bg="#D97706", fg="white", font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_frame, text=t("tm_import"), bg="#D97706", fg="white", font=("Microsoft JhengHei UI", 10),
                   bd=0, padx=16, pady=4, command=self._import_template).pack(side="left", padx=(0, 6))
-        self.btn_export = tk.Button(btn_frame, text="匯出", bg=TEXT_SEC, fg="white", font=("Microsoft JhengHei UI", 10),
+        self.btn_export = tk.Button(btn_frame, text=t("tm_export"), bg=TEXT_SEC, fg="white", font=("Microsoft JhengHei UI", 10),
                                     bd=0, padx=16, pady=4, command=self._export_selected)
         self.btn_export.pack(side="left", padx=(0, 6))
-        tk.Button(btn_frame, text="複製", bg="#7C3AED", fg="white", font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_frame, text=t("tm_duplicate"), bg="#7C3AED", fg="white", font=("Microsoft JhengHei UI", 10),
                   bd=0, padx=16, pady=4, command=self._duplicate_selected).pack(side="left", padx=(0, 6))
-        tk.Button(btn_frame, text="關閉", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_frame, text=t("tm_close"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
                   bd=1, relief="solid", padx=20, pady=4, command=self.destroy).pack(side="right")
 
         self.status_label = tk.Label(outer, text="", bg=BG, fg=OK_GRN, font=("Microsoft JhengHei UI", 9))
@@ -551,7 +552,7 @@ class TemplateManagerDialog(tk.Toplevel):
             self.tree.delete(item)
         self.templates = TemplateManager.get_all_templates()
         for t in self.templates:
-            src = "內建" if t.get('builtin') else "自訂"
+            src = t("builtin") if t.get('builtin') else t("custom")
             self.tree.insert("", tk.END, iid=t['key'], values=(t['name'], t['key'], src))
 
     def _get_selected_key(self) -> str:
@@ -571,7 +572,7 @@ class TemplateManagerDialog(tk.Toplevel):
         sel_key = self._get_selected_key() or "zh"
         base_info = TemplateManager.get_template_info(sel_key)
         dialog = tk.Toplevel(self)
-        dialog.title("新增自訂模板")
+        dialog.title(t("tm_add_title"))
         dialog.geometry("400x220")
         dialog.configure(bg=BG)
         dialog.resizable(False, False)
@@ -580,43 +581,43 @@ class TemplateManagerDialog(tk.Toplevel):
 
         f = tk.Frame(dialog, bg=BG)
         f.pack(fill="both", expand=True, padx=16, pady=16)
-        tk.Label(f, text="以「{}」為基礎".format(base_info['name']), bg=BG, fg=TEXT,
+        tk.Label(f, text=t("tm_based_on", base_info['name']).format(base_info['name']), bg=BG, fg=TEXT,
                  font=("Microsoft JhengHei UI", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
-        tk.Label(f, text="識別碼", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
+        tk.Label(f, text=t("tm_heading_key"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
         entry_key = tk.Entry(f, font=("Consolas", 10), bd=1, relief="solid")
         entry_key.grid(row=1, column=1, sticky="ew", padx=(8, 0), ipady=3)
         f.columnconfigure(1, weight=1)
-        tk.Label(f, text="模板名稱", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=2, column=0, sticky="w", pady=(8, 0))
+        tk.Label(f, text=t("te_label_name"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=2, column=0, sticky="w", pady=(8, 0))
         entry_name = tk.Entry(f, font=("Microsoft JhengHei UI", 10), bd=1, relief="solid")
         entry_name.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(8, 0), ipady=3)
 
         def do_create():
             key = entry_key.get().strip()
             name = entry_name.get().strip()
-            if not key: messagebox.showerror("錯誤", "請輸入識別碼", parent=dialog); return
-            if not name: messagebox.showerror("錯誤", "請輸入模板名稱", parent=dialog); return
+            if not key: messagebox.showerror(t("tm_err_title"), t("tm_err_empty_key"), parent=dialog); return
+            if not name: messagebox.showerror(t("tm_err_title"), t("tm_err_empty_name"), parent=dialog); return
             try:
                 TemplateManager.create_template(key, name, base_on=sel_key)
                 self._refresh_list()
                 self.status_label.config(text=f"已建立自訂模板: {name}", fg=OK_GRN)
                 dialog.destroy()
             except (TemplateExistsError, Exception) as e:
-                messagebox.showerror("錯誤", str(e), parent=dialog)
+                messagebox.showerror(t("tm_err_title"), str(e), parent=dialog)
 
         btn_f = tk.Frame(f, bg=BG)
         btn_f.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(16, 0))
-        tk.Button(btn_f, text="取消", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_f, text=t("tm_cancel"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
                   bd=1, relief="solid", padx=16, pady=4, command=dialog.destroy).pack(side="right", padx=(8, 0))
-        tk.Button(btn_f, text="建立", bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
+        tk.Button(btn_f, text=t("tm_create"), bg=ACCENT, fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
                   bd=0, padx=16, pady=4, command=do_create).pack(side="right")
         entry_key.focus_set()
 
     def _edit_selected(self):
         info = self._get_selected_info()
-        if not info: messagebox.showinfo("提示", "請先選擇一個模板", parent=self); return
-        if info.get('builtin'): messagebox.showinfo("提示", "內建模板無法編輯，請複製為自訂模板後再編輯", parent=self); return
+        if not info: messagebox.showinfo(t("info"), t("tm_hint_select"), parent=self); return
+        if info.get('builtin'): messagebox.showinfo(t("info"), t("tm_hint_builtin_noedit"), parent=self); return
         try: data = TemplateManager.load_template_data(info['key'])
-        except Exception as e: messagebox.showerror("錯誤", f"無法載入模板: {e}", parent=self); return
+        except Exception as e: messagebox.showerror(t("tm_err_title"), f"無法載入模板: {e}", parent=self); return
         dlg = TemplateEditorDialog(self, info['key'], data, is_new=False)
         if dlg.winfo_exists():
             self.wait_window(dlg)
@@ -625,23 +626,23 @@ class TemplateManagerDialog(tk.Toplevel):
                     TemplateManager.save_template(info['key'], dlg.result)
                     self._refresh_list()
                     self.status_label.config(text=f"已儲存模板: {dlg.result.get('template', {}).get('name', '')}", fg=OK_GRN)
-                except Exception as e: messagebox.showerror("錯誤", str(e), parent=self)
+                except Exception as e: messagebox.showerror(t("tm_err_title"), str(e), parent=self)
 
     def _delete_selected(self):
         info = self._get_selected_info()
-        if not info: messagebox.showinfo("提示", "請先選擇一個模板", parent=self); return
-        if info.get('builtin'): messagebox.showinfo("提示", "內建模板無法刪除", parent=self); return
-        if not messagebox.askyesno("確認刪除", f"確定刪除自訂模板「{info['name']}」？", parent=self): return
+        if not info: messagebox.showinfo(t("info"), t("tm_hint_select"), parent=self); return
+        if info.get('builtin'): messagebox.showinfo(t("info"), t("tm_hint_builtin_nodelete"), parent=self); return
+        if not messagebox.askyesno(t("tm_confirm_delete"), f"確定刪除自訂模板「{info['name']}」？", parent=self): return
         try:
             TemplateManager.delete_template(info['key'])
             self._refresh_list()
             self.status_label.config(text=f"已刪除模板: {info['name']}", fg=OK_GRN)
-        except Exception as e: messagebox.showerror("錯誤", str(e), parent=self)
+        except Exception as e: messagebox.showerror(t("tm_err_title"), str(e), parent=self)
 
     def _import_template(self):
-        path = filedialog.askopenfilename(title="選擇要匯入的模板",
-                                          filetypes=[("模板檔案", "*.yaml *.yml *.json"), ("YAML 檔案", "*.yaml"),
-                                                     ("JSON 檔案", "*.json"), ("所有檔案", "*.*")], parent=self)
+        path = filedialog.askopenfilename(title=t("tm_import_title"),
+                                          filetypes=[(t("tm_filetype_template"), "*.yaml *.yml *.json"), (t("tm_filetype_yaml"), "*.yaml"),
+                                                     (t("tm_filetype_json"), "*.json"), ("所有檔案", "*.*")], parent=self)
         if not path: return
         try:
             key = TemplateManager.import_template(path)
@@ -650,32 +651,32 @@ class TemplateManagerDialog(tk.Toplevel):
             self.status_label.config(text=f"已匯入模板: {info['name']}", fg=OK_GRN)
         except (TemplateExistsError, Exception) as e:
             if isinstance(e, TemplateExistsError):
-                if messagebox.askyesno("模板已存在", "自訂模板已存在，是否覆蓋？", parent=self):
+                if messagebox.askyesno(t("tm_exists_title"), t("tm_exists_overwrite"), parent=self):
                     try:
                         TemplateManager.delete_template(key)
                         TemplateManager.import_template(path)
                         self._refresh_list()
-                        self.status_label.config(text="已覆蓋匯入模板", fg=OK_GRN)
-                    except Exception as e2: messagebox.showerror("錯誤", str(e2), parent=self)
-            else: messagebox.showerror("錯誤", str(e), parent=self)
+                        self.status_label.config(text=t("tm_overwrite_ok"), fg=OK_GRN)
+                    except Exception as e2: messagebox.showerror(t("tm_err_title"), str(e2), parent=self)
+            else: messagebox.showerror(t("tm_err_title"), str(e), parent=self)
 
     def _export_selected(self):
         info = self._get_selected_info()
-        if not info: messagebox.showinfo("提示", "請先選擇一個模板", parent=self); return
-        path = filedialog.asksaveasfilename(title="匯出模板", defaultextension=".yaml",
+        if not info: messagebox.showinfo(t("info"), t("tm_hint_select"), parent=self); return
+        path = filedialog.asksaveasfilename(title=t("tm_export_title"), defaultextension=".yaml",
             initialfile=f"{info['key']}.yaml",
-            filetypes=[("YAML 檔案", "*.yaml"), ("JSON 檔案", "*.json"), ("所有檔案", "*.*")], parent=self)
+            filetypes=[(t("tm_filetype_yaml"), "*.yaml"), (t("tm_filetype_json"), "*.json"), ("所有檔案", "*.*")], parent=self)
         if not path: return
         try:
             TemplateManager.export_template(info['key'], path)
             self.status_label.config(text=f"已匯出至: {path}", fg=OK_GRN)
-        except Exception as e: messagebox.showerror("錯誤", str(e), parent=self)
+        except Exception as e: messagebox.showerror(t("tm_err_title"), str(e), parent=self)
 
     def _duplicate_selected(self):
         info = self._get_selected_info()
-        if not info: messagebox.showinfo("提示", "請先選擇一個模板", parent=self); return
+        if not info: messagebox.showinfo(t("info"), t("tm_hint_select"), parent=self); return
         dialog = tk.Toplevel(self)
-        dialog.title("複製模板")
+        dialog.title(t("tm_dup_title"))
         dialog.geometry("400x220")
         dialog.configure(bg=BG)
         dialog.resizable(False, False)
@@ -685,32 +686,32 @@ class TemplateManagerDialog(tk.Toplevel):
         f = tk.Frame(dialog, bg=BG)
         f.pack(fill="both", expand=True, padx=16, pady=16)
         f.columnconfigure(1, weight=1)
-        tk.Label(f, text="以「{}」為基礎".format(info['name']), bg=BG, fg=TEXT,
+        tk.Label(f, text=t("tm_based_on", base_info['name']).format(info['name']), bg=BG, fg=TEXT,
                  font=("Microsoft JhengHei UI", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
-        tk.Label(f, text="識別碼", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
+        tk.Label(f, text=t("tm_heading_key"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=1, column=0, sticky="w")
         entry_key = tk.Entry(f, font=("Consolas", 10), bd=1, relief="solid")
         entry_key.grid(row=1, column=1, sticky="ew", padx=(8, 0), ipady=3)
-        tk.Label(f, text="模板名稱", bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=2, column=0, sticky="w", pady=(8, 0))
+        tk.Label(f, text=t("te_label_name"), bg=BG, fg=TEXT, font=("Microsoft JhengHei UI", 9)).grid(row=2, column=0, sticky="w", pady=(8, 0))
         entry_name = tk.Entry(f, font=("Microsoft JhengHei UI", 10), bd=1, relief="solid")
         entry_name.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(8, 0), ipady=3)
 
         def do_duplicate():
             new_key = entry_key.get().strip()
             new_name = entry_name.get().strip()
-            if not new_key: messagebox.showerror("錯誤", "請輸入識別碼", parent=dialog); return
-            if not new_name: messagebox.showerror("錯誤", "請輸入模板名稱", parent=dialog); return
+            if not new_key: messagebox.showerror(t("tm_err_title"), t("tm_err_empty_key"), parent=dialog); return
+            if not new_name: messagebox.showerror(t("tm_err_title"), t("tm_err_empty_name"), parent=dialog); return
             try:
                 TemplateManager.duplicate_template(info['key'], new_key, new_name)
                 self._refresh_list()
                 self.status_label.config(text=f"已複製模板: {new_name}", fg=OK_GRN)
                 dialog.destroy()
             except (TemplateExistsError, BuiltinTemplateError, Exception) as e:
-                messagebox.showerror("錯誤", str(e), parent=dialog)
+                messagebox.showerror(t("tm_err_title"), str(e), parent=dialog)
 
         btn_f = tk.Frame(f, bg=BG)
         btn_f.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(16, 0))
-        tk.Button(btn_f, text="取消", bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
+        tk.Button(btn_f, text=t("tm_cancel"), bg=CARD_BG, fg=TEXT, font=("Microsoft JhengHei UI", 10),
                   bd=1, relief="solid", padx=16, pady=4, command=dialog.destroy).pack(side="right", padx=(8, 0))
-        tk.Button(btn_f, text="複製", bg="#7C3AED", fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
+        tk.Button(btn_f, text=t("tm_duplicate"), bg="#7C3AED", fg="white", font=("Microsoft JhengHei UI", 10, "bold"),
                   bd=0, padx=16, pady=4, command=do_duplicate).pack(side="right")
         entry_key.focus_set()

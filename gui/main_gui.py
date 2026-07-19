@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
@@ -7,6 +8,7 @@ import traceback
 
 from core.debug_log import get_logger
 from core.template_manager import TemplateManager, TemplateNotFoundError
+from gui.i18n import t, get_lang, set_lang, subscribe, LANG_NAMES, LANGS
 
 log = get_logger("gui")
 
@@ -28,7 +30,7 @@ OK_GRN    = "#059669"
 class ThesisFormatterGUI(TkinterDnD.Tk):
     def __init__(self):
         super().__init__()
-        self.title("論文格式修正工具")
+        self.title(t("app_title"))
         self.geometry("880x680")
         self.minsize(760, 560)
         self.configure(bg=BG)
@@ -36,6 +38,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self._status_open = False
         self._setup_styles()
         self._build_ui()
+        subscribe(self._on_lang_change)
 
     def _setup_styles(self):
         style = ttk.Style(self)
@@ -84,21 +87,36 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self._build_results(root)
         self._build_status(root)
 
-    # ── Header ──────────────────────────────────────────────
+    # ===== Header =====
     def _build_header(self, parent):
         h = tk.Frame(parent, bg=BG, highlightthickness=0)
         h.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         h.columnconfigure(0, weight=1)
-        tk.Label(h, text="論文格式修正工具", bg=BG, fg=TEXT,
-                 font=("Microsoft JhengHei", 22, "bold"),
-                 anchor="w").grid(row=0, column=0, sticky="w")
-        tk.Label(h, text="自動檢查並修正 Word 論文格式問題",
-                 bg=BG, fg=TEXT_SEC, font=("Microsoft JhengHei", 10),
-                 anchor="w").grid(row=1, column=0, sticky="w", pady=(2, 0))
-        tk.Frame(h, bg=DIVIDER, height=1, bd=0,
-                 highlightthickness=0).grid(row=2, column=0, sticky="ew", pady=(14, 0))
+        self._title_label = tk.Label(h, text=t("app_title"), bg=BG, fg=TEXT,
+                  font=("Microsoft JhengHei", 22, "bold"),
+                  anchor="w")
+        self._title_label.grid(row=0, column=0, sticky="w")
+        self._subtitle_label = tk.Label(h, text=t("app_subtitle"), bg=BG, fg=TEXT_SEC,
+                  font=("Microsoft JhengHei", 10), anchor="w")
+        self._subtitle_label.grid(row=1, column=0, sticky="w", pady=(2, 0))
 
-    # ── Cards ───────────────────────────────────────────────
+        lang_frame = tk.Frame(h, bg=BG)
+        lang_frame.grid(row=0, column=1, rowspan=2, sticky="ne", padx=(8, 0))
+        tk.Label(lang_frame, text="\U0001F310", bg=BG, fg=TEXT_SEC,
+                 font=("Microsoft JhengHei", 12)).pack(side="left", padx=(0, 4))
+        self.lang_var = tk.StringVar(value=LANG_NAMES.get(get_lang(), "\u4e2d\u6587"))
+        lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var,
+                                  values=[LANG_NAMES[l] for l in LANGS],
+                                  state="readonly", width=8,
+                                  font=("Microsoft JhengHei", 10))
+        lang_combo.pack(side="left")
+        lang_combo.bind("<<ComboboxSelected>>", self._on_lang_switch)
+
+        tk.Frame(h, bg=DIVIDER, height=1, bd=0,
+                  highlightthickness=0).grid(row=2, column=0, columnspan=2,
+                  sticky="ew", pady=(14, 0))
+
+    # ===== Cards =====
     def _build_cards(self, parent):
         row = ttk.Frame(parent)
         row.grid(row=1, column=0, sticky="ew", pady=(0, 20))
@@ -112,12 +130,12 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         card.columnconfigure(0, weight=1)
 
-        tk.Label(card, text="選擇論文檔案", bg=PANEL, fg=TEXT,
-                 font=("Microsoft JhengHei", 13, "bold"),
-                 anchor="w").grid(row=0, column=0, sticky="w", padx=16, pady=(16, 2))
-        tk.Label(card, text="載入需要修正格式的 Word 文件", bg=PANEL, fg=TEXT_SEC,
-                 font=("Microsoft JhengHei", 9),
-                 anchor="w").grid(row=1, column=0, sticky="w", padx=16, pady=(0, 12))
+        self._file_title = tk.Label(card, text=t("file_card_title"), bg=PANEL, fg=TEXT,
+                  font=("Microsoft JhengHei", 13, "bold"), anchor="w")
+        self._file_title.grid(row=0, column=0, sticky="w", padx=16, pady=(16, 2))
+        self._file_desc = tk.Label(card, text=t("file_card_desc"), bg=PANEL, fg=TEXT_SEC,
+                  font=("Microsoft JhengHei", 9), anchor="w")
+        self._file_desc.grid(row=1, column=0, sticky="w", padx=16, pady=(0, 12))
 
         self.drop_frame = tk.Frame(card, bg="#FAFAFA",
                                    highlightbackground=DIVIDER,
@@ -126,7 +144,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.drop_frame.grid_propagate(False)
         self.drop_frame.columnconfigure(0, weight=1)
         self.drop_label = tk.Label(self.drop_frame,
-                text="將 .docx 檔案拖曳至此處，或點擊下方按鈕選擇",
+                text=t("drop_hint"),
                 bg="#FAFAFA", fg=TEXT_MUTE,
                 font=("Microsoft JhengHei", 10), justify="center")
         self.drop_label.place(relx=0.5, rely=0.5, anchor="center")
@@ -143,19 +161,20 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             erow, font=("Consolas", 10), bd=1, relief="solid",
             highlightbackground=DIVIDER, bg=WHITE, fg=TEXT, insertbackground=ACCENT)
         self.file_entry.pack(side="left", fill="x", expand=True, ipady=5, padx=(0, 8))
-        ttk.Button(erow, text="瀏覽…", style="Ghost.TButton",
-                   command=self.select_file).pack(side="right")
+        self._browse_btn = ttk.Button(erow, text=t("browse"), style="Ghost.TButton",
+                    command=self.select_file)
+        self._browse_btn.pack(side="right")
 
     def _build_template_card(self, parent):
         card = tk.Frame(parent, bg=PANEL, bd=0, highlightthickness=0)
         card.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         card.columnconfigure(0, weight=1)
-        tk.Label(card, text="格式模板", bg=PANEL, fg=TEXT,
-                 font=("Microsoft JhengHei", 13, "bold"),
-                 anchor="w").grid(row=0, column=0, sticky="w", padx=16, pady=(16, 2))
-        tk.Label(card, text="選擇適用的論文格式規範", bg=PANEL, fg=TEXT_SEC,
-                 font=("Microsoft JhengHei", 9),
-                 anchor="w").grid(row=1, column=0, sticky="w", padx=16, pady=(0, 12))
+        self._tmpl_title = tk.Label(card, text=t("template_card_title"), bg=PANEL, fg=TEXT,
+                  font=("Microsoft JhengHei", 13, "bold"), anchor="w")
+        self._tmpl_title.grid(row=0, column=0, sticky="w", padx=16, pady=(16, 2))
+        self._tmpl_desc = tk.Label(card, text=t("template_card_desc"), bg=PANEL, fg=TEXT_SEC,
+                  font=("Microsoft JhengHei", 9), anchor="w")
+        self._tmpl_desc.grid(row=1, column=0, sticky="w", padx=16, pady=(0, 12))
 
         self.template_var = tk.StringVar()
         self.template_combo = ttk.Combobox(
@@ -169,27 +188,27 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             font=("Microsoft JhengHei", 8), anchor="w", wraplength=220)
         self._template_info_label.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 0))
 
-        ttk.Button(card, text="管理模板…", style="Ghost.TButton",
-                   command=self._open_template_manager).grid(
-            row=4, column=0, sticky="ew", padx=16, pady=(10, 16))
+        self._manage_btn = ttk.Button(card, text=t("manage_templates"), style="Ghost.TButton",
+                    command=self._open_template_manager)
+        self._manage_btn.grid(row=4, column=0, sticky="ew", padx=16, pady=(10, 16))
 
-    # ── Action ──────────────────────────────────────────────
+    # ===== Action =====
     def _build_action(self, parent):
         row = ttk.Frame(parent)
         row.grid(row=2, column=0, sticky="ew", pady=(0, 16))
         row.columnconfigure(0, weight=1)
         self.progress = ttk.Progressbar(row, mode="indeterminate",
-                                        length=200, style="Horizontal.TProgressbar")
+                                         length=200, style="Horizontal.TProgressbar")
         self.progress.grid(row=0, column=0, sticky="w", padx=(0, 12))
         self.progress.grid_remove()
-        ttk.Button(row, text="清除結果", style="Ghost.TButton",
-                   command=self.clear_results).grid(row=0, column=1, padx=(0, 8))
-        self.run_btn = ttk.Button(row, text="開始格式修正",
-                                  style="Primary.TButton",
-                                  command=self.run_formatter)
+        self._clear_btn = ttk.Button(row, text=t("clear_results"), style="Ghost.TButton",
+                    command=self.clear_results)
+        self._clear_btn.grid(row=0, column=1, padx=(0, 8))
+        self.run_btn = ttk.Button(row, text=t("run"), style="Primary.TButton",
+                                   command=self.run_formatter)
         self.run_btn.grid(row=0, column=2)
 
-    # ── Results ─────────────────────────────────────────────
+    # ===== Results =====
     def _build_results(self, parent):
         card = tk.Frame(parent, bg=PANEL, bd=0, highlightthickness=0)
         card.grid(row=3, column=0, sticky="nsew")
@@ -203,9 +222,9 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         columns = ("severity", "type", "message")
         self.tree = ttk.Treeview(card, columns=columns, show="headings",
                                  height=14, selectmode="browse")
-        self.tree.heading("severity", text="等級", anchor="center")
-        self.tree.heading("type", text="類型", anchor="w")
-        self.tree.heading("message", text="說明", anchor="w")
+        self.tree.heading("severity", text=t("col_severity"), anchor="center")
+        self.tree.heading("type", text=t("col_type"), anchor="w")
+        self.tree.heading("message", text=t("col_message"), anchor="w")
         self.tree.column("severity", width=80, anchor="center", minwidth=70)
         self.tree.column("type", width=150, minwidth=90)
         self.tree.column("message", width=600, minwidth=200)
@@ -220,14 +239,14 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.tree.tag_configure("even", background="#FAFAFA")
         self.tree.tag_configure("odd", background=WHITE)
 
-    # ── Collapsible Status ──────────────────────────────────
+    # ===== Collapsible Status =====
     def _build_status(self, parent):
         self._status_frame = tk.Frame(parent, bg=BG, highlightthickness=0)
         self._status_frame.columnconfigure(0, weight=1)
         self._status_frame.columnconfigure(1, weight=0)
 
         self._status_toggle = tk.Label(
-            self._status_frame, text="▶", bg=BG, fg=TEXT_SEC,
+            self._status_frame, text="\u25b6", bg=BG, fg=TEXT_SEC,
             font=("Microsoft JhengHei", 9), cursor="hand2", padx=4)
         self._status_toggle.grid(row=0, column=0, sticky="w", pady=(6, 0))
         self._status_toggle.bind("<Button-1>", self._toggle_status)
@@ -243,11 +262,11 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         if self._status_open:
             self.status_label.grid_remove()
             self._status_open = False
-            self._status_toggle.config(text="▶")
+            self._status_toggle.config(text="\u25b6")
         else:
             self.status_label.grid()
             self._status_open = True
-            self._status_toggle.config(text="▼")
+            self._status_toggle.config(text="\u25bc")
 
     def _show_status(self, text, fg=TEXT_SEC):
         self.status_label.config(text=text, fg=fg)
@@ -257,22 +276,65 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             if not self._status_open:
                 self.status_label.grid()
                 self._status_open = True
-                self._status_toggle.config(text="▼")
+                self._status_toggle.config(text="\u25bc")
         else:
             self._status_frame.grid_remove()
             self._status_open = False
 
-    # ── Drag feedback ───────────────────────────────────────
+    # ===== Language =====
+    def _on_lang_switch(self, event=None):
+        for l in LANGS:
+            if LANG_NAMES[l] == self.lang_var.get():
+                set_lang(l)
+                break
+
+    def _on_lang_change(self):
+        self.title(t("app_title"))
+        self.lang_var.set(LANG_NAMES.get(get_lang(), "\u4e2d\u6587"))
+        self._title_label.config(text=t("app_title"))
+        self._subtitle_label.config(text=t("app_subtitle"))
+        self._file_title.config(text=t("file_card_title"))
+        self._file_desc.config(text=t("file_card_desc"))
+        if not self._dragging:
+            self.drop_label.config(text=t("drop_hint"))
+        self._browse_btn.config(text=t("browse"))
+        self._tmpl_title.config(text=t("template_card_title"))
+        self._tmpl_desc.config(text=t("template_card_desc"))
+        self._manage_btn.config(text=t("manage_templates"))
+        self._clear_btn.config(text=t("clear_results"))
+        self.run_btn.config(text=t("run"))
+        self.tree.heading("severity", text=t("col_severity"), anchor="center")
+        self.tree.heading("type", text=t("col_type"), anchor="w")
+        self.tree.heading("message", text=t("col_message"), anchor="w")
+        if self.tree.get_children():
+            self._refresh_results_text()
+        self._on_template_change()
+        self.update_idletasks()
+
+    def _refresh_results_text(self):
+        for item in self.tree.get_children():
+            vals = self.tree.item(item, "values")
+            tags = self.tree.item(item, "tags")
+            sev_raw = vals[0]
+            mapping = {
+                t("sev_error"): t("sev_error"),
+                t("sev_warning"): t("sev_warning"),
+                t("sev_info"): t("sev_info"),
+                t("sev_fixed"): t("sev_fixed"),
+            }
+            sev_display = mapping.get(sev_raw, sev_raw)
+            self.tree.item(item, values=(sev_display, vals[1], vals[2]), tags=tags)
+
+    # ===== Drag feedback =====
     def _on_drag_enter(self, event):
         self._dragging = True
         self.drop_frame.configure(bg="#DBEAFE", highlightbackground=ACCENT)
-        self.drop_label.configure(bg="#DBEAFE", fg=ACCENT, text="放開以選取此檔案")
+        self.drop_label.configure(bg="#DBEAFE", fg=ACCENT, text=t("drop_active"))
 
     def _on_drag_leave(self, event):
         self._dragging = False
         self.drop_frame.configure(bg="#FAFAFA", highlightbackground=DIVIDER)
-        self.drop_label.configure(bg="#FAFAFA", fg=TEXT_MUTE,
-                                  text="將 .docx 檔案拖曳至此處，或點擊下方按鈕選擇")
+        self.drop_label.configure(bg="#FAFAFA", fg=TEXT_MUTE, text=t("drop_hint"))
 
     def _on_drag_pos(self, event):
         if not self._dragging:
@@ -285,19 +347,19 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             self.file_entry.delete(0, tk.END)
             self.file_entry.insert(0, files[0])
 
-    # ── Template ────────────────────────────────────────────
+    # ===== Template =====
     def _refresh_template_list(self):
         templates = TemplateManager.get_all_templates()
         self._template_map = {}
         names = []
-        for t in templates:
-            display = t["name"]
-            if t.get("builtin"):
-                display += " (內建)"
+        for tpl in templates:
+            display = tpl["name"]
+            if tpl.get("builtin"):
+                display += f" ({t('builtin')})"
             else:
-                display += " (自訂)"
+                display += f" ({t('custom')})"
             names.append(display)
-            self._template_map[display] = t["key"]
+            self._template_map[display] = tpl["key"]
         self.template_combo["values"] = names
         if not self.template_var.get() or self.template_var.get() not in names:
             self.template_var.set(names[0] if names else "")
@@ -311,13 +373,13 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         try:
             info = TemplateManager.get_template_info(template_key)
             desc = info.get('description', '')
-            src = "內建" if info.get('builtin') else "自訂"
-            text = f"✓ {info['name']} ({src})"
+            src = t('builtin') if info.get('builtin') else t('custom')
+            text = f"\u2713 {info['name']} ({src})"
             if desc:
-                text += f" — {desc}"
+                text += f" \u2014 {desc}"
             self._template_info_label.config(text=text, fg=OK_GRN)
         except Exception:
-            self._template_info_label.config(text=f"選取: {display}", fg=TEXT_SEC)
+            self._template_info_label.config(text=f"{display}", fg=TEXT_SEC)
 
     def _open_template_manager(self):
         from gui.template_dialog import TemplateManagerDialog
@@ -325,11 +387,11 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.wait_window(dlg)
         self._refresh_template_list()
 
-    # ── Handlers ────────────────────────────────────────────
+    # ===== Handlers =====
     def select_file(self):
         path = filedialog.askopenfilename(
-            title="選擇論文檔案",
-            filetypes=[("Word 文件", "*.docx"), ("所有檔案", "*.*")])
+            title=t("file_dialog_title"),
+            filetypes=[(t("filetype_docx"), "*.docx"), (t("filetype_all"), "*.*")])
         if path:
             self.file_entry.delete(0, tk.END)
             self.file_entry.insert(0, path)
@@ -342,13 +404,13 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
     def run_formatter(self):
         input_path = self.file_entry.get().strip()
         if not input_path or not Path(input_path).exists():
-            messagebox.showerror("錯誤", "請選擇有效的 .docx 檔案")
+            messagebox.showerror(t("err_no_file"), t("err_no_file_msg"))
             return
         self.clear_results()
         self.run_btn.config(state="disabled")
         self.progress.grid()
         self.progress.start(12)
-        self._show_status("正在分析與修正中…", fg=TEXT_SEC)
+        self._show_status(t("status_analyzing"), fg=TEXT_SEC)
         template_key = self.template_var.get()
         thread = threading.Thread(target=self._process_document,
                                   args=(input_path, template_key))
@@ -361,7 +423,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         from core.analyzer import FormatAnalyzer
         from core.fixer import FormatFixer
         input_path = Path(input_path)
-        output_path = input_path.parent / f"{input_path.stem}_格式修正{input_path.suffix}"
+        output_path = input_path.parent / f"{input_path.stem}_\u683c\u5f0f\u4fee\u6b63{input_path.suffix}"
         try:
             template_key = self._template_map.get(template_display, template_display)
             log.info("template_display=%s, resolved key=%s", template_display, template_key)
@@ -380,7 +442,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         except Exception as e:
             log.error(traceback.format_exc())
             self.after(0, lambda e=e, td=template_display: messagebox.showerror(
-                "處理錯誤", f"模板「{td}」處理失敗:\n{e}"))
+                t("err_process"), t("err_process_msg", td, e)))
         finally:
             self.after(0, self._reset_ui)
 
@@ -392,15 +454,16 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
     def _update_results(self, issues, fixes, output_name):
         for item in self.tree.get_children():
             self.tree.delete(item)
-        template_display = self.template_var.get() or "預設"
+        template_display = self.template_var.get() or "\u9810\u8a2d"
         self._output_label.config(
-            text=f"模板: {template_display}  |  輸出: {output_name}")
+            text=f"{template_display}  |  {t('col_message')}: {output_name}")
         idx = 0
         for r in issues:
             sev = r.get("severity", "info")
             tag_base = sev if sev in ("error", "warning", "info") else "info"
             row_tag = "even" if idx % 2 == 0 else "odd"
-            sev_display = {"error": "錯誤", "warning": "警告", "info": "提示"}.get(sev, sev)
+            sev_display = {"error": t("sev_error"), "warning": t("sev_warning"),
+                           "info": t("sev_info")}.get(sev, sev)
             self.tree.insert("", tk.END,
                 values=(sev_display, r.get("type", ""), r.get("message", "")),
                 tags=(tag_base, row_tag))
@@ -408,10 +471,10 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         for r in fixes:
             row_tag = "even" if idx % 2 == 0 else "odd"
             self.tree.insert("", tk.END,
-                values=("修正", r.get("type", ""), r.get("message", "")),
+                values=(t("sev_fixed"), r.get("type", ""), r.get("message", "")),
                 tags=("saved", row_tag))
             idx += 1
-        self._show_status(f"完成！已儲存至 {output_name}", fg=OK_GRN)
+        self._show_status(t("status_done", output_name), fg=OK_GRN)
 
 
 if __name__ == "__main__":
