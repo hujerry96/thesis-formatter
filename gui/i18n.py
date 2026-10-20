@@ -44,6 +44,15 @@ _STRINGS = {
         "file_dialog_title": "選擇論文檔案",
         "filetype_docx": "Word 文件",
         "filetype_all": "所有檔案",
+        "err_not_docx_msg": "只支援 .docx 檔案。\n舊版 .doc 請先在 Word 另存為 .docx。",
+        "err_missing_msg": "找不到檔案：\n{}",
+        "status_ready": "就緒　Ctrl+O 選擇檔案，Enter 開始修正",
+        "status_file_ready": "已選擇 {}　按 Enter 開始修正",
+        "status_failed": "處理失敗：{}",
+        "summary": "錯誤 {}　警告 {}　提示 {}　已修正 {}",
+        "open_file": "開啟檔案",
+        "open_folder": "開啟資料夾",
+        "empty_results": "選擇檔案後按「開始格式修正」，檢查與修正結果會列在這裡",
         "tm_title": "模板管理",
         "tm_heading_name": "模板名稱",
         "tm_heading_key": "識別碼",
@@ -179,6 +188,15 @@ _STRINGS = {
         "file_dialog_title": "Select Thesis File",
         "filetype_docx": "Word Document",
         "filetype_all": "All Files",
+        "err_not_docx_msg": "Only .docx files are supported.\nSave legacy .doc files as .docx in Word first.",
+        "err_missing_msg": "File not found:\n{}",
+        "status_ready": "Ready — Ctrl+O to choose a file, Enter to start",
+        "status_file_ready": "Selected {} — press Enter to start",
+        "status_failed": "Failed: {}",
+        "summary": "Errors {}   Warnings {}   Info {}   Fixed {}",
+        "open_file": "Open File",
+        "open_folder": "Open Folder",
+        "empty_results": "Choose a file and press Start Formatting; results appear here",
         "tm_title": "Template Manager",
         "tm_heading_name": "Name",
         "tm_heading_key": "Key",
@@ -289,28 +307,53 @@ _current = DEFAULT_LANG
 _subscribers = []
 
 
-def _load_lang():
-    global _current
+_settings = {}
+
+
+def _read_config():
+    """config.ini 為簡單的 key = "value" 行；讀取失敗就用預設值。"""
     try:
         if CONFIG_PATH.exists():
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 for line in f:
-                    line = line.strip()
-                    if line.startswith("language"):
-                        val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        if val in LANGS:
-                            _current = val
-                            return
+                    if "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    _settings[k.strip()] = v.strip().strip('"').strip("'")
     except Exception:
         pass
+
+
+def _write_config():
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            for k, v in _settings.items():
+                f.write('{} = "{}"\n'.format(k, v))
+    except Exception:
+        pass
+
+
+def _load_lang():
+    global _current
+    _read_config()
+    if _settings.get("language") in LANGS:
+        _current = _settings["language"]
 
 
 def _save_lang():
-    try:
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            f.write('language = "{}"\n'.format(_current))
-    except Exception:
-        pass
+    _settings["language"] = _current
+    _write_config()
+
+
+def get_setting(key, default=""):
+    return _settings.get(key, default)
+
+
+def set_setting(key, value):
+    value = str(value).replace('"', "").replace("\n", " ")
+    if _settings.get(key) != value:
+        _settings[key] = value
+        _write_config()
 
 
 _load_lang()

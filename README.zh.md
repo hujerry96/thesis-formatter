@@ -37,7 +37,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
-拖曳 Word 檔案到視窗，或點擊「選取檔案」。
+拖曳 Word 檔案到視窗，或點擊「瀏覽…」，再按 Enter 開始修正。完成後可直接「開啟檔案」或「開啟資料夾」。
+
+快捷鍵：`Ctrl+O` 選擇檔案、`Enter` / `F5` 開始修正、`Ctrl+L` 清除結果。上次使用的模板與資料夾會自動記住。
 
 介面語言可透過視窗右上角的下拉選單切換（中文 / English），選擇會自動記住。
 

@@ -3,12 +3,15 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from pathlib import Path
+import os
+import subprocess
 import threading
 import traceback
 
 from core.debug_log import get_logger
 from core.template_manager import TemplateManager, TemplateNotFoundError
-from gui.i18n import t, get_lang, set_lang, subscribe, LANG_NAMES, LANGS
+from gui.i18n import (t, get_lang, set_lang, subscribe, LANG_NAMES, LANGS,
+                      get_setting, set_setting)
 
 log = get_logger("gui")
 
@@ -35,10 +38,32 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.minsize(760, 560)
         self.configure(bg=BG)
         self._dragging = False
-        self._status_open = False
+        self._busy = False
+        self._output_path = None
+        self._status_key = ("status_ready", ())
         self._setup_styles()
         self._build_ui()
+        self._bind_shortcuts()
+        self._show_status(*self._status_key)
         subscribe(self._on_lang_change)
+
+    def _bind_shortcuts(self):
+        # 只綁在主視窗；模板管理等子視窗不會觸發
+        self.bind("<Control-o>", lambda e: self.select_file())
+        self.bind("<Control-O>", lambda e: self.select_file())
+        self.bind("<Return>", self._on_return)
+        self.bind("<KP_Enter>", self._on_return)
+        self.bind("<F5>", lambda e: self.run_formatter())
+        self.bind("<Control-l>", lambda e: self.clear_results())
+        self.bind("<Control-L>", lambda e: self.clear_results())
+
+    def _on_return(self, event=None):
+        # 焦點在按鈕上時 Enter 交給按鈕本身
+        if isinstance(event.widget, (ttk.Button, tk.Button)):
+            event.widget.invoke()
+            return "break"
+        self.run_formatter()
+        return "break"
 
     def _setup_styles(self):
         style = ttk.Style(self)
@@ -161,6 +186,8 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             erow, font=("Consolas", 10), bd=1, relief="solid",
             highlightbackground=DIVIDER, bg=WHITE, fg=TEXT, insertbackground=ACCENT)
         self.file_entry.pack(side="left", fill="x", expand=True, ipady=5, padx=(0, 8))
+        self.file_entry.drop_target_register(DND_FILES)
+        self.file_entry.dnd_bind("<<Drop>>", self._on_drop)
         self._browse_btn = ttk.Button(erow, text=t("browse"), style="Ghost.TButton",
                     command=self.select_file)
         self._browse_btn.pack(side="right")
@@ -211,8 +238,9 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         card.columnconfigure(0, weight=1)
         card.rowconfigure(1, weight=1)
 
-        self._output_label = tk.Label(card, text="", bg=PANEL, fg=TEXT_SEC,
-            font=("Microsoft JhengHei", 9), anchor="w")
+        self._summary_counts = None
+        self._output_label = tk.Label(card, text="", bg=PANEL, fg=TEXT,
+            font=("Microsoft JhengHei", 10, "bold"), anchor="w")
         self._output_label.grid(row=0, column=0, columnspan=2, sticky="ew", padx=18, pady=(10, 0))
 
         columns = ("severity", "type", "message")
@@ -234,48 +262,48 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.tree.tag_configure("saved", foreground=OK_GRN)
         self.tree.tag_configure("even", background="#FAFAFA")
         self.tree.tag_configure("odd", background=WHITE)
+        self._empty_label = tk.Label(self.tree, text=t("empty_results"), bg=WHITE,
+            fg=TEXT_MUTE, font=("Microsoft JhengHei", 10))
+        self._empty_label.place(relx=0.5, rely=0.5, anchor="center")
 
-    # ===== Collapsible Status =====
+    # ===== Status =====
     def _build_status(self, parent):
         self._status_frame = tk.Frame(parent, bg=BG, highlightthickness=0)
+        self._status_frame.grid(row=4, column=0, sticky="ew", pady=(10, 0))
         self._status_frame.columnconfigure(0, weight=1)
-        self._status_frame.columnconfigure(1, weight=0)
-
-        self._status_toggle = tk.Label(
-            self._status_frame, text="\u25b6", bg=BG, fg=TEXT_SEC,
-            font=("Microsoft JhengHei", 9), cursor="hand2", padx=4)
-        self._status_toggle.grid(row=0, column=0, sticky="w", pady=(6, 0))
-        self._status_toggle.bind("<Button-1>", self._toggle_status)
-        self._status_toggle.grid_remove()
-
+        self._status_fg = TEXT_SEC
         self.status_label = tk.Label(
             self._status_frame, text="", bg=BG, fg=TEXT_SEC,
             font=("Microsoft JhengHei", 9), anchor="w")
-        self.status_label.grid(row=0, column=0, sticky="w", pady=(6, 0))
-        self.status_label.grid_remove()
+        self.status_label.grid(row=0, column=0, sticky="w")
+        self._open_file_btn = ttk.Button(self._status_frame, text=t("open_file"),
+            style="Ghost.TButton", command=self._open_output)
+        self._open_folder_btn = ttk.Button(self._status_frame, text=t("open_folder"),
+            style="Ghost.TButton", command=self._open_output_folder)
+        self._open_file_btn.grid(row=0, column=1, padx=(8, 0))
+        self._open_folder_btn.grid(row=0, column=2, padx=(8, 0))
+        self._set_open_buttons(False)
 
-    def _toggle_status(self, event=None):
-        if self._status_open:
-            self.status_label.grid_remove()
-            self._status_open = False
-            self._status_toggle.config(text="\u25b6")
-        else:
-            self.status_label.grid()
-            self._status_open = True
-            self._status_toggle.config(text="\u25bc")
+    def _show_status(self, key, args=(), fg=TEXT_SEC):
+        """狀態列文字以 i18n key 保存，切換語言時可重繪。"""
+        self._status_key = (key, args)
+        self._status_fg = fg
+        self.status_label.config(text=t(key, *args), fg=fg)
 
-    def _show_status(self, text, fg=TEXT_SEC):
-        self.status_label.config(text=text, fg=fg)
-        if text:
-            self._status_frame.grid(row=4, column=0, sticky="ew", pady=(0, 0))
-            self._status_toggle.grid()
-            if not self._status_open:
-                self.status_label.grid()
-                self._status_open = True
-                self._status_toggle.config(text="\u25bc")
-        else:
-            self._status_frame.grid_remove()
-            self._status_open = False
+    def _set_open_buttons(self, visible):
+        for b in (self._open_file_btn, self._open_folder_btn):
+            if visible:
+                b.grid()
+            else:
+                b.grid_remove()
+
+    def _open_output(self):
+        if self._output_path and self._output_path.exists():
+            os.startfile(str(self._output_path))
+
+    def _open_output_folder(self):
+        if self._output_path and self._output_path.exists():
+            subprocess.Popen(["explorer", "/select,", str(self._output_path)])
 
     # ===== Language =====
     def _on_lang_switch(self, event=None):
@@ -302,24 +330,28 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self.tree.heading("severity", text=t("col_severity"), anchor="center")
         self.tree.heading("type", text=t("col_type"), anchor="w")
         self.tree.heading("message", text=t("col_message"), anchor="w")
+        self._empty_label.config(text=t("empty_results"))
+        self._open_file_btn.config(text=t("open_file"))
+        self._open_folder_btn.config(text=t("open_folder"))
+        self._refresh_template_list()
         if self.tree.get_children():
             self._refresh_results_text()
-        self._on_template_change()
+        self._show_status(*self._status_key, fg=self._status_fg)
         self.update_idletasks()
 
+    SEV_KEYS = {"error": "sev_error", "warning": "sev_warning",
+                "info": "sev_info", "saved": "sev_fixed"}
+
     def _refresh_results_text(self):
+        # 第一個 tag 是原始等級，用它重新翻譯等級欄
         for item in self.tree.get_children():
             vals = self.tree.item(item, "values")
             tags = self.tree.item(item, "tags")
-            sev_raw = vals[0]
-            mapping = {
-                t("sev_error"): t("sev_error"),
-                t("sev_warning"): t("sev_warning"),
-                t("sev_info"): t("sev_info"),
-                t("sev_fixed"): t("sev_fixed"),
-            }
-            sev_display = mapping.get(sev_raw, sev_raw)
-            self.tree.item(item, values=(sev_display, vals[1], vals[2]), tags=tags)
+            sev_key = self.SEV_KEYS.get(tags[0] if tags else "")
+            if sev_key:
+                self.tree.item(item, values=(t(sev_key), vals[1], vals[2]))
+        if self._summary_counts:
+            self._output_label.config(text=self._summary_text())
 
     # ===== Drag feedback =====
     def _on_drag_enter(self, event):
@@ -340,8 +372,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         self._on_drag_leave(event)
         files = self.tk.splitlist(event.data)
         if files:
-            self.file_entry.delete(0, tk.END)
-            self.file_entry.insert(0, files[0])
+            self._set_file(files[0])
 
     # ===== Template =====
     def _refresh_template_list(self):
@@ -357,7 +388,12 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
             names.append(display)
             self._template_map[display] = tpl["key"]
         self.template_combo["values"] = names
-        if not self.template_var.get() or self.template_var.get() not in names:
+        # 沿用目前選擇；首次啟動則還原上次使用的模板
+        current_key = self._template_map.get(self.template_var.get()) or get_setting("template")
+        by_key = {v: k for k, v in self._template_map.items()}
+        if current_key in by_key:
+            self.template_var.set(by_key[current_key])
+        else:
             self.template_var.set(names[0] if names else "")
 
     def _on_template_change(self, event=None):
@@ -365,6 +401,8 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         if not display:
             return
         template_key = self._template_map.get(display, "")
+        if event is not None and template_key:
+            set_setting("template", template_key)
         try:
             TemplateManager.get_template_info(template_key)
         except Exception:
@@ -378,28 +416,65 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
 
     # ===== Handlers =====
     def select_file(self):
+        if self._busy:
+            return
+        current = self.file_entry.get().strip()
+        initialdir = str(Path(current).parent) if current else get_setting("last_dir")
         path = filedialog.askopenfilename(
             title=t("file_dialog_title"),
+            initialdir=initialdir or None,
             filetypes=[(t("filetype_docx"), "*.docx"), (t("filetype_all"), "*.*")])
         if path:
-            self.file_entry.delete(0, tk.END)
-            self.file_entry.insert(0, path)
+            self._set_file(path)
+
+    def _set_file(self, path):
+        if self._busy:
+            return
+        self.file_entry.delete(0, tk.END)
+        self.file_entry.insert(0, path)
+        self.file_entry.xview_moveto(1.0)
+        set_setting("last_dir", str(Path(path).parent))
+        self._set_open_buttons(False)
+        self._show_status("status_file_ready", (Path(path).name,))
+        self.run_btn.focus_set()
 
     def clear_results(self):
+        if self._busy:
+            return
         for item in self.tree.get_children():
             self.tree.delete(item)
-        self._show_status("")
+        self._summary_counts = None
+        self._output_label.config(text="")
+        self._empty_label.place(relx=0.5, rely=0.5, anchor="center")
+        self._set_open_buttons(False)
+        self._show_status("status_ready")
+
+    def _validate_input(self, input_path):
+        if not input_path:
+            return t("err_no_file_msg")
+        p = Path(input_path)
+        if not p.is_file():
+            return t("err_missing_msg", input_path)
+        if p.suffix.lower() != ".docx":
+            return t("err_not_docx_msg")
+        return None
 
     def run_formatter(self):
-        input_path = self.file_entry.get().strip()
-        if not input_path or not Path(input_path).exists():
-            messagebox.showerror(t("err_no_file"), t("err_no_file_msg"))
+        if self._busy:
+            return
+        input_path = self.file_entry.get().strip().strip('"')
+        err = self._validate_input(input_path)
+        if err:
+            self._show_status("status_failed", (err.splitlines()[0],), fg=ERR_RED)
+            messagebox.showerror(t("err_no_file"), err)
             return
         self.clear_results()
+        self._busy = True
         self.run_btn.config(state="disabled")
         self.progress.grid()
         self.progress.start(12)
-        self._show_status(t("status_analyzing"), fg=TEXT_SEC)
+        self._show_status("status_analyzing")
+        self.config(cursor="watch")
         template_key = self.template_var.get()
         thread = threading.Thread(target=self._process_document,
                                   args=(input_path, template_key))
@@ -427,35 +502,47 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
 
             fixer = FormatFixer(rule_file)
             fixes = fixer.fix_document(str(input_path), str(output_path))
-            self.after(0, self._update_results, issues, fixes, output_path.name)
+            self.after(0, self._update_results, issues, fixes, output_path)
         except Exception as e:
             log.error(traceback.format_exc())
-            self.after(0, lambda e=e, td=template_display: messagebox.showerror(
-                t("err_process"), t("err_process_msg", td, e)))
+            self.after(0, self._show_error, template_display, e)
         finally:
             self.after(0, self._reset_ui)
 
+    def _show_error(self, template_display, e):
+        self._show_status("status_failed", (e,), fg=ERR_RED)
+        messagebox.showerror(t("err_process"), t("err_process_msg", template_display, e))
+
     def _reset_ui(self):
+        self._busy = False
+        self.config(cursor="")
         self.progress.stop()
         self.progress.grid_remove()
         self.run_btn.config(state="normal")
 
-    def _update_results(self, issues, fixes, output_name):
+    def _summary_text(self):
+        return t("summary", *self._summary_counts)
+
+    def _update_results(self, issues, fixes, output_path):
         for item in self.tree.get_children():
             self.tree.delete(item)
-        template_display = self.template_var.get() or "\u9810\u8a2d"
-        self._output_label.config(
-            text=f"{template_display}  |  {t('col_message')}: {output_name}")
-        idx = 0
+        self._empty_label.place_forget()
+        counts = {"error": 0, "warning": 0, "info": 0}
+        # 錯誤、警告排在前面，一眼看到要處理的項目
+        order = {"error": 0, "warning": 1, "info": 2}
+        rows = []
         for r in issues:
             sev = r.get("severity", "info")
-            tag_base = sev if sev in ("error", "warning", "info") else "info"
+            sev = sev if sev in counts else "info"
+            counts[sev] += 1
+            rows.append((order[sev], sev, r))
+        rows.sort(key=lambda x: x[0])
+        idx = 0
+        for _, sev, r in rows:
             row_tag = "even" if idx % 2 == 0 else "odd"
-            sev_display = {"error": t("sev_error"), "warning": t("sev_warning"),
-                           "info": t("sev_info")}.get(sev, sev)
             self.tree.insert("", tk.END,
-                values=(sev_display, r.get("type", ""), r.get("message", "")),
-                tags=(tag_base, row_tag))
+                values=(t(self.SEV_KEYS[sev]), r.get("type", ""), r.get("message", "")),
+                tags=(sev, row_tag))
             idx += 1
         for r in fixes:
             row_tag = "even" if idx % 2 == 0 else "odd"
@@ -463,7 +550,12 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
                 values=(t("sev_fixed"), r.get("type", ""), r.get("message", "")),
                 tags=("saved", row_tag))
             idx += 1
-        self._show_status(t("status_done", output_name), fg=OK_GRN)
+        self._summary_counts = (counts["error"], counts["warning"], counts["info"], len(fixes))
+        self._output_label.config(text=self._summary_text())
+        self._output_path = Path(output_path)
+        self._show_status("status_done", (self._output_path.name,), fg=OK_GRN)
+        self._set_open_buttons(True)
+        self._open_file_btn.focus_set()
 
 
 if __name__ == "__main__":

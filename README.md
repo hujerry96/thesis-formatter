@@ -37,7 +37,9 @@ Requirements: Python 3.8+, python-docx, lxml, PyYAML, tkinter (built-in)
 python main.py
 ```
 
-Drag a Word file into the window, or click "Select File".
+Drag a Word file into the window or click "Browse…", then press Enter. When done, use "Open File" or "Open Folder".
+
+Shortcuts: `Ctrl+O` choose file, `Enter` / `F5` start, `Ctrl+L` clear results. The last template and folder are remembered.
 
 The UI language can be switched via the dropdown at the top-right of the window (中文 / English); the choice is remembered.
 
