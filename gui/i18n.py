@@ -4,9 +4,14 @@ ponytail: dict 查表取代硬編碼字串，避免引入 gettext 等外部依�
 語言選擇寫入 config.ini，下次啟動記住。
 """
 
+import sys
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.ini"
+# 打包成 exe 時 __file__ 在暫存目錄（關閉即刪），改存到 exe 旁邊，與自訂模板相同
+if getattr(sys, "frozen", False):
+    CONFIG_PATH = Path(sys.executable).parent / "config.ini"
+else:
+    CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.ini"
 
 DEFAULT_LANG = "zh"
 LANGS = ("zh", "en")

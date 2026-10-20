@@ -9,7 +9,7 @@ from pathlib import Path
 
 def main():
     print("=" * 50)
-    print("論文格式修正工具 v2.0")
+    print("論文格式修正工具 v2.2.0")
     print("=" * 50)
     
     if len(sys.argv) > 1:
