@@ -465,7 +465,7 @@ class ThesisFormatterGUI(TkinterDnD.Tk):
         input_path = self.file_entry.get().strip().strip('"')
         err = self._validate_input(input_path)
         if err:
-            self._show_status("status_failed", (err.splitlines()[0],), fg=ERR_RED)
+            self._show_status("status_failed", (" ".join(err.split()),), fg=ERR_RED)
             messagebox.showerror(t("err_no_file"), err)
             return
         self.clear_results()
